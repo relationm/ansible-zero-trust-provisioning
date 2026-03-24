@@ -48,4 +48,5 @@ While this project implements robust application-level security, certain enterpr
 1. Kernel-Level Protection & LUKS: Containers share the host's Linux kernel. Disk encryption (LUKS at rest) and kernel hardening parameters (sysctl) cannot be modified independently inside a standard container.
 2. Micro-segmentation (UFW/Firewalld): Network filtering tools like iptables or ufw require elevated network privileges (--cap-add=NET_ADMIN). In a real VM or Bare Metal server, strict firewall rules (Deny All by default) would be applied.
 3. Auditd (System Auditing): The Linux Auditing System interacts directly with the kernel to log file access (e.g., monitoring /etc/shadow). This is unsupported in unprivileged containers.  
-  These practices are fully acknowledged and would be integrated via Ansible if deploying to AWS EC2, VMware VMs, or Bare Metal infrastructure.
+  
+These practices are fully acknowledged and would be integrated via Ansible if deploying to AWS EC2, VMware VMs, or Bare Metal infrastructure.
