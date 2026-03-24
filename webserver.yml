@@ -1,0 +1,93 @@
+---
+- name: Secure Web Server Setup (Zero Trust & PoLP Approach)
+  hosts: all
+  become: yes
+  tasks:
+    # ==========================================
+    # PHASE 1: IDENTITY & ACCESS MANAGEMENT (IAM)
+    # ==========================================
+    - name: Create a dedicated non-root user (devops_admin)
+      user:
+        name: devops_admin
+        state: present
+        shell: /bin/bash
+
+    - name: Set up SSH authorized key for the new user
+      authorized_key:
+        user: devops_admin
+        state: present
+        key: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+
+    - name: Ensure sudo is installed (Docker minimalism fix)
+      apt:
+        name: sudo
+        state: present
+        update_cache: yes
+
+    - name: Allow devops_admin to run sudo commands without a password
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^devops_admin'
+        line: 'devops_admin ALL=(ALL) NOPASSWD: ALL'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    # ==========================================
+    # PHASE 2: SSH HARDENING
+    # ==========================================
+    - name: Disable direct root login via SSH (PoLP)
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+      notify: Reload SSH
+
+    - name: Disable SSH password authentication (Force SSH Keys only)
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+      notify: Reload SSH
+
+    - name: Set SSH Session Timeout (Disconnect after 5 mins of inactivity)
+      lineinfile:
+        path: /etc/profile
+        line: 'export TMOUT=300'
+        state: present
+
+    # ==========================================
+    # PHASE 3: APPLICATION DEPLOYMENT
+    # ==========================================
+    - name: Ensure Nginx is installed
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Start Nginx manually (Docker workaround)
+      shell: service nginx start
+
+    - name: Create a custom index.html with UTF-8
+      copy:
+        dest: /var/www/html/index.html
+        content: |
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+            </head>
+            <body style="background-color: #1a1a1a; color: #00ffcc; font-family: monospace; text-align: center; padding-top: 15%;">
+              <h1>🛡️ ZERO TRUST ARCHITECTURE ENGAGED</h1>
+              <h2>Server configured with Principle of Least Privilege (PoLP)</h2>
+              <h3>✅ Root Login: DISABLED</h3>
+              <h3>✅ Password Auth: DISABLED</h3>
+              <p>DevOps Engineer: relationm</p>
+            </body>
+          </html>
+
+  # ==========================================
+  # HANDLERS (Run only if notified by a changed task)
+  # ==========================================
+  handlers:
+    - name: Reload SSH
+      shell: service ssh reload
